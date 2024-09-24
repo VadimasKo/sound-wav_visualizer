@@ -2,45 +2,73 @@ package audio
 
 import (
 	"fmt"
-	"github.com/go-audio/wav"
 	"os"
+
+	"github.com/go-audio/audio"
+	"github.com/go-audio/wav"
 )
 
-func ReadWavFile(audioFile string) {
-	// Open the .wav file
-	file, err := os.Open(audioFile)
+// AudioFileProperties holds information about the audio file.
+type AudioFileProperties struct {
+	QuantizationPeriod float64
+	FileName           string
+	ChannelCount       int
+	Depth              uint16
+	SampleRate         uint32
+}
+
+// ProcessWAV reads a WAV file and processes the samples with a callback function.
+func ProcessWAV(filePath string, callback func(startIndex int, samples []int) error) (*AudioFileProperties, error) {
+	// Open the WAV file
+	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
-	// Create a new decoder
 	decoder := wav.NewDecoder(file)
-
-	// Check if it's a valid wav file
 	if !decoder.IsValidFile() {
-		fmt.Println("Invalid WAV file.")
-		return
+		return nil, fmt.Errorf("invalid WAV file")
 	}
 
-	// Decode the WAV file and retrieve PCM audio data
-	buf, err := decoder.FullPCMBuffer()
-	if err != nil {
-		fmt.Println("Error decoding WAV:", err)
-		return
+	props := &AudioFileProperties{
+		QuantizationPeriod: 1.0 / float64(decoder.SampleRate),
+		FileName:           filePath,
+		ChannelCount:       int(decoder.NumChans),
+		Depth:              decoder.BitDepth,
+		SampleRate:         uint32(decoder.SampleRate),
 	}
 
-	// Access the PCM audio data
-	fmt.Println("Number of samples:", buf.NumFrames())
-	fmt.Println("Sample rate:", buf.Format.SampleRate)
-	fmt.Println("Channels:", buf.Format.NumChannels)
+	// Prepare a buffer for samples
+	bufSize := 4096
+	buf := &audio.IntBuffer{Data: make([]int, bufSize), Format: &audio.Format{
+		NumChannels: int(decoder.NumChans),
+		SampleRate:  int(decoder.SampleRate),
+	}}
 
-	// For example, you can access individual samples like this:
-	for i, sample := range buf.Data {
-		fmt.Printf("Sample %d: %d\n", i, sample)
-		if i > 10 { // Limiting the output for readability
-			break
+	startIndex := 0
+	var n int
+
+	for {
+		n, err = decoder.PCMBuffer(buf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read samples: %w", err)
 		}
+		if n == 0 {
+			break // No more samples to read
+		}
+
+		// Trim the buffer to the actual number of samples read
+		if n < len(buf.Data) {
+			buf.Data = buf.Data[:n]
+		}
+
+		// Process the samples with the callback function
+		if err := callback(startIndex, buf.Data); err != nil {
+			return nil, fmt.Errorf("callback error: %w", err)
+		}
+		startIndex += n
 	}
+
+	return props, nil
 }
