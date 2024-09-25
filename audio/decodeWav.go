@@ -18,7 +18,7 @@ type AudioFileProperties struct {
 	Duration           time.Duration
 }
 
-func DecodeWav(file *os.File) (*audio.IntBuffer, *AudioFileProperties, error) {
+func DecodeWav(file *os.File, filePath string) (*audio.IntBuffer, *AudioFileProperties, error) {
 	decoder := wav.NewDecoder(file)
 	if !decoder.IsValidFile() {
 		return nil, nil, fmt.Errorf("invalid WAV file")
@@ -31,7 +31,7 @@ func DecodeWav(file *os.File) (*audio.IntBuffer, *AudioFileProperties, error) {
 
 	props := &AudioFileProperties{
 		QuantizationPeriod: 1.0 / float64(decoder.SampleRate),
-		FileName:           "TEST",
+		FileName:           filePath,
 		ChannelCount:       int(decoder.NumChans),
 		Depth:              decoder.BitDepth,
 		SampleRate:         uint32(decoder.SampleRate),

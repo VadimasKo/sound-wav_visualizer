@@ -2,10 +2,8 @@ package visualizer
 
 import (
 	"fmt"
-	"math/rand"
-	"os"
-
-	"github.com/NimbleMarkets/ntcharts/canvas"
+	"vadimasKo/wav_visualizer/audio"
+	// "github.com/NimbleMarkets/ntcharts/canvas"
 	"github.com/NimbleMarkets/ntcharts/canvas/runes"
 	"github.com/NimbleMarkets/ntcharts/linechart/wavelinechart"
 
@@ -14,37 +12,36 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 )
 
-var randomFloat64Point1 canvas.Float64Point
-var randomFloat64Point2 canvas.Float64Point
-
 var defaultStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("63")) // purple
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("5"))
 
 var graphLineStyle1 = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("4")) // blue
-
-var graphLineStyle2 = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("9")) // red
+	Foreground(lipgloss.Color("5"))
 
 var axisStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("3")) // yellow
+	Foreground(lipgloss.Color("#fff"))
 
 var labelStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("6")) // cyan
+	Foreground(lipgloss.Color("#fff"))
 
-type model struct {
-	wlc wavelinechart.Model
-	zM  *zone.Manager
+var propertyStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("5")).
+	Padding(0, 1)
+
+type Model struct {
+	wlc        wavelinechart.Model
+	zM         *zone.Manager
+	audioProps *audio.AudioFileProperties
 }
 
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	m.wlc.Draw()
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	addPoint := false
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	forwardMsg := false
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -62,60 +59,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "up", "down", "left", "right", "pgup", "pgdown":
 			forwardMsg = true
-		default:
-			addPoint = true
 		}
-	}
-	if addPoint {
-		// generate a random points within the given X,Y value ranges
-		dx := m.wlc.MaxX() - m.wlc.MinX()
-		dy := m.wlc.MaxY() - m.wlc.MinY()
-		xRand1 := rand.Float64()*dx + m.wlc.MinX()
-		yRand1 := rand.Float64()*dy + m.wlc.MinY()
-		xRand2 := rand.Float64()*dx + m.wlc.MinX()
-		yRand2 := rand.Float64()*dy + m.wlc.MinY()
-		randomFloat64Point1 = canvas.Float64Point{X: xRand1, Y: yRand1}
-		randomFloat64Point2 = canvas.Float64Point{X: xRand2, Y: yRand2}
-
-		//  wavelinechart 1 plots random point 1 to default data set
-		m.wlc.Plot(randomFloat64Point1)
-		m.wlc.Draw()
+	case tea.MouseMsg:
+		if msg.Action == tea.MouseActionPress {
+			if m.zM.Get(m.wlc.ZoneID()).InBounds(msg) { // switch to canvas 1 if clicked on it
+				m.wlc.Focus()
+			} else {
+				m.wlc.Blur()
+			}
+		}
+		forwardMsg = true
 	}
 
 	// wavelinechart handles mouse events
 	if forwardMsg {
-		m.wlc, _ = m.wlc.Update(msg)
-		m.wlc.DrawAll()
+		if m.wlc.Focused() {
+			m.wlc, _ = m.wlc.Update(msg)
+			m.wlc.DrawAll()
+		}
 	}
 
 	return m, nil
 }
 
-func (m model) View() string {
-	top := fmt.Sprintf("file name:_ \n")
-	top += fmt.Sprintf("channel count:_ sampling rate:_ quantization depth:_ \n")
-	s := lipgloss.JoinHorizontal(lipgloss.Top, defaultStyle.Render(top+m.wlc.View())) + "\n"
-	s += "`q/ctrl+c` to quit\n"
-	// s += "pgup/pdown/mouse wheel scroll to zoom in and out\n"
-	// s += "+arrow keys to move view while zoomed in\n"
-	return m.zM.Scan(s) // call zone Manager.Scan() at root model
+func (m Model) View() string {
+	// Format each property manually
+	fileName := propertyStyle.Render(fmt.Sprintf("FileName: %s", m.audioProps.FileName))
+	channelCount := propertyStyle.Render(fmt.Sprintf("ChannelCount: %d", m.audioProps.ChannelCount))
+	depth := propertyStyle.Render(fmt.Sprintf("Depth: %dbit", m.audioProps.Depth))
+	sampleRate := propertyStyle.Render(fmt.Sprintf("SampleRate: %dhz", m.audioProps.SampleRate))
+
+	// Combine properties into a single formatted string
+	top := fmt.Sprintf(
+		"%s\n%s | %s | %s\n",
+		fileName,
+		channelCount,
+		depth,
+		sampleRate,
+	)
+
+	s := lipgloss.JoinHorizontal(lipgloss.Top, defaultStyle.Render(top+m.wlc.View())+"\n")
+
+	return m.zM.Scan(s) // Call zone Manager.Scan() at root modeli
 }
 
-// The signal graph should include the name of the selected file
-// and the main audio quality indicators: number of channels,
-// the main parameters of the channels, such as sampling rate, quantization depth.
-
-func TermGraph() {
-	width := 92
-	height := 16
-
-	// generated based on audio file
+func WavelineModel(properties *audio.AudioFileProperties) Model {
+	width := 64
+	height := 11
 	xStep := 1
 	yStep := 1
 	minXValue := 0.0
-	maxXValue := 10.0
-	minYValue := -5.0
-	maxYValue := 5.0
+	maxXValue := properties.Duration.Seconds()
+	minYValue := -2.0
+	maxYValue := 2.0
 
 	// create new bubblezone Manager to enable mouse support to zoom in and out of chart
 	zoneManager := zone.New()
@@ -126,15 +122,11 @@ func TermGraph() {
 	wlc.LabelStyle = labelStyle
 	wlc.SetXStep(xStep)
 	wlc.SetYStep(yStep)
-	wlc.SetXYRange(minXValue, maxXValue, minYValue, maxYValue)     // set expected ranges (can be less than or greater than displayed)
-	wlc.SetViewXYRange(minXValue, maxXValue, minYValue, maxYValue) // setting displayed ranges fails unless setting expected values first
-	wlc.SetStyles(runes.ThinLineStyle, graphLineStyle1)            // graphLineStyle1 replaces linechart rune style
+	wlc.SetXYRange(minXValue, maxXValue, minYValue, maxYValue)
+	wlc.SetViewXYRange(0, 60, -60, 60)
+	wlc.SetStyles(runes.ThinLineStyle, graphLineStyle1)
 	wlc.SetZoneManager(zoneManager)
 	wlc.Focus()
-
-	m := model{wlc, zoneManager}
-	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
+	m := Model{wlc, zoneManager, properties}
+	return m
 }
