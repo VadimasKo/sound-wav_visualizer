@@ -2,43 +2,73 @@ package main
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
 	"os"
+	"sync"
 	"vadimasKo/wav_visualizer/audio"
 	"vadimasKo/wav_visualizer/filePicker"
 	"vadimasKo/wav_visualizer/visualizer"
-	// "vadimasKo/wav_visualizer/visualizer"
+
+	"github.com/NimbleMarkets/ntcharts/canvas"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
 	audioFilePath := filePicker.PickWavFile()
 
 	file, err := os.Open(audioFilePath)
-	if err != nil || file == nil {
-		fmt.Errorf("failed to open file: %w", err)
+	if err != nil {
+		fmt.Printf("failed to open file: %v\n", err)
 		return
 	}
 	defer file.Close()
 
-	_, audioProps, err := audio.DecodeWav(file, audioFilePath)
+	ap, err := audio.StartAudioProcessing(file, audioFilePath)
 	if err != nil {
-		fmt.Errorf("failed to decode .wav: %w", err)
+		fmt.Printf("failed to decode .wav: %v\n", err)
 		return
 	}
 
-	m := visualizer.WavelineModel(audioProps)
+	m := visualizer.WavelineModel(ap.FileProperties)
 
-	// visualizer.CreateWavelineChart(audioFilePath)
-	fmt.Println("FileName:", audioProps.FileName)
-	fmt.Println("QuantizationPeriod:", audioProps.QuantizationPeriod)
-	fmt.Println("ChannelCount:", audioProps.ChannelCount)
-	fmt.Println("Depth:", audioProps.Depth)
-	fmt.Println("SampleRate:", audioProps.SampleRate)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	fmt.Println("Duration:", audioProps.Duration.Seconds())
+	go func() {
+		defer wg.Done()
+		ap.ProcessAudioFile()
+	}()
+
+	processedPoints := make([][]canvas.Float64Point, ap.FileProperties.ChannelCount)
+	for i := range processedPoints {
+		processedPoints[i] = make([]canvas.Float64Point, 2000)
+	}
+
+	wg.Wait()
+	for channeledPoints := range ap.PointsChannel {
+		for channelId, points := range channeledPoints {
+			fmt.Printf("Processing Channel %d, Total Points: %d\n", channelId, len(points))
+
+			for _, point := range points {
+				fmt.Printf("Channel: %d | Time (X): %.2f seconds | Amplitude (Y): %.2f\n", channelId, point.X, point.Y)
+
+				if point.X > ap.FileProperties.Duration.Seconds() {
+					fmt.Printf("Warning: Time value out of range for Channel %d: %.2f\n", channelId, point.X)
+					break
+				}
+
+				if point.Y > 1 || point.Y < -1 { // Example of outlier detection
+					fmt.Printf("Warning: Amplitude value out of range for Channel %d: %.2f\n", channelId, point.Y)
+				}
+
+				processedPoints[channelId] = append(processedPoints[channelId], point)
+			}
+		}
+	}
+
+	visualizer.PlotMultiChannelData(m, processedPoints)
 
 	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
-		os.Exit(1)
+		return
 	}
 }
