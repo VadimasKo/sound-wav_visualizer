@@ -56,7 +56,7 @@ func main() {
 					break
 				}
 
-				if point.Y > 1 || point.Y < -1 { // Example of outlier detection
+ b				if point.Y > 1 || point.Y < -1 { // Example of outlier detection
 					fmt.Printf("Warning: Amplitude value out of range for Channel %d: %.2f\n", channelId, point.Y)
 				}
 
