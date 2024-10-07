@@ -5,11 +5,10 @@ import (
 	"os"
 	"sync"
 	"wav_visualizer/pcm_energy_visualizer/audio"
+	"wav_visualizer/pcm_energy_visualizer/chart"
 	"wav_visualizer/pcm_energy_visualizer/filePicker"
-	"wav_visualizer/pcm_energy_visualizer/visualizer"
 
 	"github.com/NimbleMarkets/ntcharts/canvas"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -28,8 +27,6 @@ func main() {
 		return
 	}
 
-	m := visualizer.WavelineModel(ap.FileProperties)
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -46,18 +43,10 @@ func main() {
 	wg.Wait()
 	for channeledPoints := range ap.PointsChannel {
 		for channelId, points := range channeledPoints {
-			fmt.Printf("Processing Channel %d, Total Points: %d\n", channelId, len(points))
-
 			for _, point := range points {
-				fmt.Printf("Channel: %d | Time (X): %.2f seconds | Amplitude (Y): %.2f\n", channelId, point.X, point.Y)
 
 				if point.X > ap.FileProperties.Duration.Seconds() {
-					fmt.Printf("Warning: Time value out of range for Channel %d: %.2f\n", channelId, point.X)
 					break
-				}
-
-				if point.Y > 1 || point.Y < -1 { // Example of outlier detection
-					fmt.Printf("Warning: Amplitude value out of range for Channel %d: %.2f\n", channelId, point.Y)
 				}
 
 				processedPoints[channelId] = append(processedPoints[channelId], point)
@@ -65,13 +54,6 @@ func main() {
 		}
 	}
 
-	var a = 2 + 2
-	println("%d", a)
-
-	visualizer.PlotMultiChannelData(m, processedPoints)
-
-	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		return
-	}
+	examples := chart.LineExamples{}
+	chart.LineExamples.Examples(examples)
 }
