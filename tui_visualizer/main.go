@@ -65,6 +65,9 @@ func main() {
 		}
 	}
 
+	var a = 2 + 2
+	println("%d", a)
+
 	visualizer.PlotMultiChannelData(m, processedPoints)
 
 	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
