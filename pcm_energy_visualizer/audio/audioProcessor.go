@@ -7,10 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NimbleMarkets/ntcharts/canvas"
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
 )
+
+type AudioInputPoint struct {
+	X float64
+	Y float64
+}
 
 type AudioFileProperties struct {
 	QuantizationPeriod float64
@@ -23,7 +27,7 @@ type AudioFileProperties struct {
 
 type AudioProcessor struct {
 	FileProperties   *AudioFileProperties
-	PointsChannel    chan [][]canvas.Float64Point // Send points to the channel
+	PointsChannel    chan [][]AudioInputPoint
 	buf              *audio.IntBuffer
 	decoder          *wav.Decoder
 	maximumAmplitude float64
@@ -94,7 +98,7 @@ func StartAudioProcessing(file *os.File, filePath string) (*AudioProcessor, erro
 		FileProperties:   props,
 		buf:              buf,
 		decoder:          decoder,
-		PointsChannel:    make(chan [][]canvas.Float64Point, props.ChannelCount),
+		PointsChannel:    make(chan [][]AudioInputPoint, props.ChannelCount),
 		maximumAmplitude: getMaxAmplitude(props.Depth),
 	}
 
@@ -103,10 +107,10 @@ func StartAudioProcessing(file *os.File, filePath string) (*AudioProcessor, erro
 
 // ========== SAMPLE PARSING
 func (ap *AudioProcessor) parseSamples(startIndex int, samples []int) {
-	points := make([][]canvas.Float64Point, ap.FileProperties.ChannelCount)
+	points := make([][]AudioInputPoint, ap.FileProperties.ChannelCount)
 
 	for i := range points {
-		points[i] = make([]canvas.Float64Point, len(samples)/int(ap.FileProperties.ChannelCount))
+		points[i] = make([]AudioInputPoint, len(samples)/int(ap.FileProperties.ChannelCount))
 	}
 
 	for i, sample := range samples {
@@ -117,7 +121,7 @@ func (ap *AudioProcessor) parseSamples(startIndex int, samples []int) {
 		}
 		amplitude := float64(sample) / ap.maximumAmplitude
 		timeInSeconds := float64(startIndex+sampleIndex) / float64(ap.FileProperties.SampleRate)
-		points[channel][sampleIndex] = canvas.Float64Point{X: timeInSeconds, Y: amplitude}
+		points[channel][sampleIndex] = AudioInputPoint{X: timeInSeconds, Y: amplitude}
 	}
 
 	ap.PointsChannel <- points
