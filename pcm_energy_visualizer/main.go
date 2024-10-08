@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"wav_visualizer/pcm_energy_visualizer/audio"
 	"wav_visualizer/pcm_energy_visualizer/chart"
 	"wav_visualizer/pcm_energy_visualizer/filePicker"
 
-	"github.com/NimbleMarkets/ntcharts/canvas"
+	"github.com/go-echarts/go-echarts/v2/components"
 )
+
+var outputPath = "./output"
 
 func main() {
 	audioFilePath := filePicker.PickWavFile()
@@ -35,25 +38,43 @@ func main() {
 		ap.ProcessAudioFile()
 	}()
 
-	processedPoints := make([][]canvas.Float64Point, ap.FileProperties.ChannelCount)
+	processedPoints := make([][]audio.AudioInputPoint, ap.FileProperties.ChannelCount)
 	for i := range processedPoints {
-		processedPoints[i] = make([]canvas.Float64Point, 2000)
+		processedPoints[i] = make([]audio.AudioInputPoint, 2000)
 	}
 
 	wg.Wait()
 	for channeledPoints := range ap.PointsChannel {
 		for channelId, points := range channeledPoints {
 			for _, point := range points {
-
-				if point.X > ap.FileProperties.Duration.Seconds() {
-					break
-				}
-
 				processedPoints[channelId] = append(processedPoints[channelId], point)
 			}
 		}
 	}
 
-	examples := chart.LineExamples{}
-	chart.LineExamples.Examples(examples)
+	// audio energy.go
+	// audio energy.go
+	// audo  pcm.go
+
+	// create page file w header showing file name and information
+	// create time graph
+	// create energy graph
+	// create pcm graph
+	// create segmented energy graph
+	// write page to html file
+
+	page := components.NewPage()
+	page.AddCharts(
+		chart.AudioLineChart("Time series graph", processedPoints),
+	)
+
+	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
+		panic(err)
+	}
+
+	f, err := os.Create(outputPath + "/chart.html")
+	if err != nil {
+		panic(err)
+	}
+	page.Render(io.MultiWriter(f))
 }
