@@ -13,6 +13,8 @@ import (
 )
 
 var outputPath = "./output"
+var frameDuration = 20.0 / 1000.0 // 20ms
+var energyThreshold = 0.5
 
 func main() {
 	audioFilePath := filePicker.PickWavFile()
@@ -52,36 +54,52 @@ func main() {
 		}
 	}
 
-	// audio energy.go
-	// audio energy.go
-	// audo  pcm.go
+	timeChartOptions := chart.ChartOptions{
+		Title:           "Time series chart",
+		ChanneledPoints: processedPoints,
+		Segments:        make([][]audio.AudioSegment, 0),
+	}
 
-	// create page file w header showing file name and information - ?
-	// create time graph - done
-	// create energy graph - done
-	// create pcm graph
-	// create segmented energy graph
-	// write page to html file
-
-	frameDuration := 20.0 / 1000.0 // 20ms
-
-	energyPoints := audio.ConverSignalToEnergy(
-		processedPoints,
-		ap.FileProperties.QuantizationPeriod,
-		frameDuration,
-	)
-
+	// ====== ZRC Chart
 	zeroCrossingRate := audio.ConvertSignalToZCRGraph(
 		processedPoints,
 		ap.FileProperties.QuantizationPeriod,
 		frameDuration,
 	)
 
+	zeroCrosingRateChartOptions := chart.ChartOptions{
+		Title:           "Zero crossing rate chart",
+		ChanneledPoints: zeroCrossingRate,
+		Segments:        make([][]audio.AudioSegment, 0),
+	}
+
+	// ====== energy chart
+	energyPoints := audio.ConverSignalToEnergy(
+		processedPoints,
+		ap.FileProperties.QuantizationPeriod,
+		frameDuration,
+	)
+
+	energyChartOptions := chart.ChartOptions{
+		Title:           "Energy chart",
+		ChanneledPoints: energyPoints,
+		Segments:        make([][]audio.AudioSegment, 0),
+	}
+
+	// ====== energy chart with segments
+	energySegments := audio.GetSignalThresholdSegments(energyPoints, energyThreshold)
+	segmentedEnergyChartOptions := chart.ChartOptions{
+		Title:           "Segmented Energy Chart",
+		ChanneledPoints: energyPoints,
+		Segments:        energySegments,
+	}
+
 	page := components.NewPage()
 	page.AddCharts(
-		chart.AudioLineChart("Time series graph", processedPoints),
-		chart.AudioLineChart("Energy graph", energyPoints),
-		chart.AudioLineChart("Zero crossing rate graph", zeroCrossingRate),
+		timeChartOptions.CreateAudioLineChart(),
+		energyChartOptions.CreateAudioLineChart(),
+		zeroCrosingRateChartOptions.CreateAudioLineChart(),
+		segmentedEnergyChartOptions.CreateAudioLineChart(),
 	)
 
 	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
