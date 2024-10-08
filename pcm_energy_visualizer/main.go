@@ -56,19 +56,32 @@ func main() {
 	// audio energy.go
 	// audo  pcm.go
 
-	// create page file w header showing file name and information
-	// create time graph
-	// create energy graph
+	// create page file w header showing file name and information - ?
+	// create time graph - done
+	// create energy graph - done
 	// create pcm graph
 	// create segmented energy graph
 	// write page to html file
 
-	energyPoints := audio.ConverSignalToEnergy(processedPoints, ap.FileProperties.QuantizationPeriod)
+	frameDuration := 20.0 / 1000.0 // 20ms
+
+	energyPoints := audio.ConverSignalToEnergy(
+		processedPoints,
+		ap.FileProperties.QuantizationPeriod,
+		frameDuration,
+	)
+
+	zeroCrossingRate := audio.ConvertSignalToZCRGraph(
+		processedPoints,
+		ap.FileProperties.QuantizationPeriod,
+		frameDuration,
+	)
 
 	page := components.NewPage()
 	page.AddCharts(
 		chart.AudioLineChart("Time series graph", processedPoints),
 		chart.AudioLineChart("Energy graph", energyPoints),
+		chart.AudioLineChart("Zero crossing rate graph", zeroCrossingRate),
 	)
 
 	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {

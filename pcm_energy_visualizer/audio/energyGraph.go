@@ -4,19 +4,17 @@ import (
 	"math"
 )
 
-var frameDuration = 20.0 / 1000.0 // 20ms
-
-func ConverSignalToEnergy(channeledSignal [][]AudioInputPoint, sampleRateMs float64) [][]AudioInputPoint {
+func ConverSignalToEnergy(channeledSignal [][]AudioInputPoint, sampleRateMs float64, frameDuration float64) [][]AudioInputPoint {
 	channels := make([][]AudioInputPoint, len(channeledSignal))
 
 	for i, channel := range channeledSignal {
-		channels[i] = convertChannelToEnergy(channel, sampleRateMs)
+		channels[i] = convertChannelToEnergy(channel, sampleRateMs, frameDuration)
 	}
 
 	return channels
 }
 
-func convertChannelToEnergy(signalArray []AudioInputPoint, sampleRateMs float64) []AudioInputPoint {
+func convertChannelToEnergy(signalArray []AudioInputPoint, sampleRateMs float64, frameDuration float64) []AudioInputPoint {
 	sampleCount := len(signalArray)
 	samplesPerFrame := int(frameDuration / sampleRateMs)
 	overlapStep := samplesPerFrame / 2
