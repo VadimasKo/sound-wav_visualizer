@@ -26,7 +26,7 @@ func convertChannelToZCRGraph(signalArray []AudioInputPoint, sampleRateMs float6
 		frameSamples := signalArray[i:lastIndex]
 
 		if len(frameSamples) < 2 {
-			break
+			continue
 		}
 
 		zcr := 0.0
