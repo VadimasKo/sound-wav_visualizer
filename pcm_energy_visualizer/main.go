@@ -63,9 +63,12 @@ func main() {
 	// create segmented energy graph
 	// write page to html file
 
+	energyPoints := audio.ConverSignalToEnergy(processedPoints, ap.FileProperties.QuantizationPeriod)
+
 	page := components.NewPage()
 	page.AddCharts(
 		chart.AudioLineChart("Time series graph", processedPoints),
+		chart.AudioLineChart("Energy graph", energyPoints),
 	)
 
 	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
