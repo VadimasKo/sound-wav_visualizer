@@ -1,8 +1,11 @@
-## Project list
-- [wav_visualizer](#wav_visualizer) - A terminal-based application that visualizes `.wav` files.
+# Wav_visualizer
+| Table Of Contents        | link        |
+| -------------------------| ----------- |
+| About 🔍                  |  [here](#1) |
+| Running and Debuging 🛠️   |  [here](#2) |
 
-## wav_visualizer
-This is a TUI (Text User Interface) application that reads `.wav` files and displays the signal in a time graph.
+## About 🔍 <a name='1'></a>
+This is a TUI application that reads `.wav` audio files and displays normalised signal in a time graph.
 
 1. The user selects a `.wav` file using `bubbletea file-picker`.
 2. The application decodes essential information about the file (bit depth, sample rate, etc.).
@@ -16,3 +19,11 @@ This is a TUI (Text User Interface) application that reads `.wav` files and disp
 7. The result is displayed using the `bubbletea` framework.
 
 <img width="733" alt="Screenshot 2024-09-28 at 16 30 40" src="https://github.com/user-attachments/assets/cdaad0da-4791-4728-9fc8-3f61eef3c207">
+
+
+## Running and Debuging 🛠️ <a name="2"></a>
+| Script            | Description      |
+| ----------------- | ---------------- |
+| `go mod tidy`     | Install packages |
+| `go run main.go`  | Run package      |
+*due to buggy implementation, you may have to click graph for points to be added*
