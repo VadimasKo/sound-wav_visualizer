@@ -1,4 +1,4 @@
-# Wav_visualizer
+# wav_visualizer
 | Table Of Contents        | link        |
 | -------------------------| ----------- |
 | About 🔍                  |  [here](#1) |
